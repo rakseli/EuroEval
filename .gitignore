@@ -113,6 +113,9 @@ src/upload/
 # Mkdocs
 site/
 
+# Scripts
+scripts/
+
 # Helper files for docs
 docs/datasets/dataset_example_commands.txt
 
