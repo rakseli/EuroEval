@@ -74,6 +74,8 @@ class Benchmarker:
         trust_remote_code: bool = False,
         clear_model_cache: bool = False,
         evaluate_test_split: bool = False,
+        learning_rate: float | None = None,
+        hp_search: bool = False,
         few_shot: bool = True,
         num_iterations: int = 10,
         api_base: str | None = None,
@@ -188,6 +190,8 @@ class Benchmarker:
             trust_remote_code=trust_remote_code,
             clear_model_cache=clear_model_cache,
             evaluate_test_split=evaluate_test_split,
+            learning_rate = learning_rate,
+            hp_search=hp_search,
             few_shot=few_shot,
             num_iterations=num_iterations,
             api_base=api_base,
@@ -203,8 +207,10 @@ class Benchmarker:
 
         # Initialise variable storing model lists, so we only have to fetch it once
         self._model_lists: dict[str, list[str]] | None = None
-
-        self.results_path = Path.cwd() / "euroeval_benchmark_results.jsonl"
+        if not hp_search:
+            self.results_path = Path.cwd() / "euroeval_benchmark_results.jsonl"
+        else:
+            self.results_path = Path.cwd() / "euroeval_benchmark_results_hyperparameter_search.jsonl"
         adjust_logging_level(verbose=self.benchmark_config.verbose)
 
     @property
@@ -240,6 +246,8 @@ class Benchmarker:
         trust_remote_code: bool | None = None,
         clear_model_cache: bool | None = None,
         evaluate_test_split: bool | None = None,
+        learning_rate: float | None = None,
+        hp_search: bool = False,
         few_shot: bool | None = None,
         num_iterations: int | None = None,
         only_allow_safetensors: bool | None = None,
@@ -352,11 +360,12 @@ class Benchmarker:
             trust_remote_code=trust_remote_code,
             clear_model_cache=clear_model_cache,
             evaluate_test_split=evaluate_test_split,
+            learning_rate=learning_rate,
             few_shot=few_shot,
             num_iterations=num_iterations,
             only_allow_safetensors=only_allow_safetensors,
+            hp_search=hp_search
         )
-
         adjust_logging_level(verbose=benchmark_config.verbose)
 
         if benchmark_config.clear_model_cache:
@@ -523,6 +532,8 @@ class Benchmarker:
         trust_remote_code: bool | None = None,
         clear_model_cache: bool | None = None,
         evaluate_test_split: bool | None = None,
+        learning_rate: float | None = None,
+        hp_search: bool | None = None,
         few_shot: bool | None = None,
         num_iterations: int | None = None,
         api_base: str | None | None = None,
@@ -614,6 +625,8 @@ class Benchmarker:
 
         if progress_bar is not None:
             benchmark_config_params.progress_bar = progress_bar
+        if hp_search is not None:
+            benchmark_config_params.hp_search = hp_search
         if save_results is not None:
             benchmark_config_params.save_results = save_results
         if task is not None:
@@ -648,6 +661,8 @@ class Benchmarker:
             benchmark_config_params.clear_model_cache = clear_model_cache
         if evaluate_test_split is not None:
             benchmark_config_params.evaluate_test_split = evaluate_test_split
+        if learning_rate is not None:
+            benchmark_config_params.learning_rate = learning_rate
         if few_shot is not None:
             benchmark_config_params.few_shot = few_shot
         if num_iterations is not None:
@@ -849,6 +864,8 @@ class Benchmarker:
         trust_remote_code: bool | None = None,
         clear_model_cache: bool | None = None,
         evaluate_test_split: bool | None = None,
+        learning_rate: float | None = None,
+        hp_search: bool | None = None, 
         few_shot: bool | None = None,
         num_iterations: int | None = None,
         only_allow_safetensors: bool | None = None,
@@ -944,6 +961,10 @@ class Benchmarker:
             "Calling the `Benchmarker` class directly is deprecated. Please use the "
             "`benchmark` function instead. This will be removed in a future version."
         )
+        if hp_search and evaluate_test_split:
+            raise ValueError("Using hyperparameter search while evaluating on test split causes possibility to overfit the model selection to test set! Aborting!")
+        if hp_search and learning_rate is not None:
+            logger.warning("Using single learning rate is not effective when hyperparameter search is used")
         return self.benchmark(
             model=model,
             task=task,
@@ -963,6 +984,8 @@ class Benchmarker:
             trust_remote_code=trust_remote_code,
             clear_model_cache=clear_model_cache,
             evaluate_test_split=evaluate_test_split,
+            learning_rate=learning_rate,
+            hp_search=hp_search,
             few_shot=few_shot,
             num_iterations=num_iterations,
             only_allow_safetensors=only_allow_safetensors,

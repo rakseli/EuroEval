@@ -26,6 +26,7 @@ from .utils import (
     enforce_reproducibility,
     log_once,
 )
+from collections import defaultdict
 
 if t.TYPE_CHECKING:
     from .data_models import BenchmarkConfig, DatasetConfig, ModelConfig
@@ -65,93 +66,115 @@ def finetune(
         dtype = DataType.FP16
     else:
         dtype = DataType.FP32
+    if benchmark_config.hp_search:
+        learning_rates = [3e-5,2e-5,4e-5,5e-5]
+        logger.debug(f"Starting HP search with LRs: {learning_rates}")
+        results = defaultdict(list)
+    else:
+        if benchmark_config.learning_rate is None:
+            learning_rates = [2e-5]
+        else:
+            learning_rates = [benchmark_config.learning_rate]
+    for n_lr,lr in enumerate(learning_rates):
+        logger.debug(f"Starting LR: {lr}")
+        bs: int = benchmark_config.batch_size
+        scores: list[dict[str, float]] = list()
+        for idx in tqdm(
+            iterable=range(benchmark_config.num_iterations),
+            desc="Benchmarking",
+            disable=not benchmark_config.progress_bar,
+        ):
+            logger.debug(f"Starting itereation {idx}")
 
-    bs: int = benchmark_config.batch_size
-    scores: list[dict[str, float]] = list()
-    for idx in tqdm(
-        iterable=range(benchmark_config.num_iterations),
-        desc="Benchmarking",
-        disable=not benchmark_config.progress_bar,
-    ):
-        # Set variable that tracks whether we need to initialize new models in
-        # the single iteration call
-        model_already_initialized = idx == 0
+            # Set variable that tracks whether we need to initialize new models in
+            # the single iteration call
+            if not benchmark_config.hp_search:
+                model_already_initialized = idx == 0
+            else:
+                model_already_initialized = n_lr == 0
+            
+            # Run a loop here to deal with automatic reduction of batch size
+            while True:
+                # Clear GPU memory
+                if not model_already_initialized:
+                    try:
+                        del model
+                    except UnboundLocalError:
+                        pass
+                    clear_memory()
 
-        # Run a loop here to deal with automatic reduction of batch size
-        while True:
-            # Clear GPU memory
-            if not model_already_initialized:
                 try:
-                    del model
-                except UnboundLocalError:
-                    pass
-                clear_memory()
+                    # Re-block terminal output, as it gets unblocked by the `transformers`
+                    # package before training
+                    block_terminal_output()
 
-            try:
-                # Re-block terminal output, as it gets unblocked by the `transformers`
-                # package before training
-                block_terminal_output()
+                    training_args = get_training_args(
+                        benchmark_config=benchmark_config,
+                        model_config=model_config,
+                        iteration_idx=idx,
+                        dtype=dtype,
+                        batch_size=bs,
+                        learning_rate=lr
 
-                training_args = get_training_args(
-                    benchmark_config=benchmark_config,
-                    model_config=model_config,
-                    iteration_idx=idx,
-                    dtype=dtype,
-                    batch_size=bs,
-                )
-
-                itr_scores = finetune_single_iteration(
-                    model=model if model_already_initialized else None,
-                    dataset=datasets[idx],
-                    training_args=training_args,
-                    model_config=model_config,
-                    dataset_config=dataset_config,
-                    benchmark_config=benchmark_config,
-                )
-
-                scores.append(itr_scores)
-                logger.debug(f"Test scores for iteration {idx}: {itr_scores}")
-
-                break
-
-            # NaN values can appear in the model output when using mixed precision, as
-            # the hidden states get overflowed. In this case we try to disable mixed
-            # precision and try again.
-            except NaNValueInModelOutput:
-                if dtype != DataType.FP32:
-                    dtype = DataType.FP32
-                    model_already_initialized = False
-                    logger.debug(
-                        "NaN value detected in model outputs while using mixed "
-                        "precision. Retrying with full fp32 precision."
                     )
-                else:
-                    raise InvalidBenchmark(
-                        "NaN value detected in model outputs, even with mixed "
-                        "precision disabled."
+                    logger.debug(f"Starting training for idx {idx}")
+                    itr_scores = finetune_single_iteration(
+                        model=model if model_already_initialized else None,
+                        dataset=datasets[idx],
+                        training_args=training_args,
+                        model_config=model_config,
+                        dataset_config=dataset_config,
+                        benchmark_config=benchmark_config,
                     )
+                    logger.debug(f"Training done for idx {idx}")
+                    if benchmark_config.hp_search:
+                        results[lr].append(itr_scores)
+                    else:
+                        scores.append(itr_scores)
+                    logger.debug(f"Test scores for iteration {idx}, learning rate {lr}: {itr_scores}")
 
-            except Exception as e:
-                if "CUDA" not in str(e) and "out of memory" not in str(e):
-                    raise InvalidBenchmark(str(e))
+                    break
 
-                if bs <= 1:
-                    msg = "Could not benchmark the model, even with a batch size of 1!"
-                    if "MPS" in str(e):
-                        msg += (
-                            " As you are using MPS, you can try running the evaluation "
-                            "with the `PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0` "
-                            "environment variable set, as this removes the upper bound "
-                            "on the memory usage."
+                # NaN values can appear in the model output when using mixed precision, as
+                # the hidden states get overflowed. In this case we try to disable mixed
+                # precision and try again.
+                except NaNValueInModelOutput:
+                    if dtype != DataType.FP32:
+                        dtype = DataType.FP32
+                        model_already_initialized = False
+                        logger.debug(
+                            "NaN value detected in model outputs while using mixed "
+                            "precision. Retrying with full fp32 precision."
                         )
-                    raise InvalidBenchmark(msg)
+                    else:
+                        raise InvalidBenchmark(
+                            "NaN value detected in model outputs, even with mixed "
+                            "precision disabled."
+                        )
 
-                model_already_initialized = False
+                except Exception as e:
+                    if "CUDA" not in str(e) and "out of memory" not in str(e):
+                        raise InvalidBenchmark(str(e))
 
-                bs //= 2
-                logger.debug(f"Reduced batch size to {bs}")
+                    if bs <= 1:
+                        msg = "Could not benchmark the model, even with a batch size of 1!"
+                        if "MPS" in str(e):
+                            msg += (
+                                " As you are using MPS, you can try running the evaluation "
+                                "with the `PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0` "
+                                "environment variable set, as this removes the upper bound "
+                                "on the memory usage."
+                            )
+                        raise InvalidBenchmark(msg)
+                    logger.debug(e)
+                    model_already_initialized = False
 
-    return scores
+                    bs //= 2
+                    logger.debug(f"Reduced batch size to {bs}")
+    if not benchmark_config.hp_search:
+        return scores
+    else:
+        return results
 
 
 def finetune_single_iteration(
@@ -198,7 +221,8 @@ def finetune_single_iteration(
         train_dataset=dataset["train"],
         eval_dataset=dataset["val"],
         compute_metrics=model.compute_metrics,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
+        #change patience from 2 to 5 as it may be to convervative for models trained with large N of tokens
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
         data_collator=model.data_collator,
     )
 
@@ -253,6 +277,7 @@ def get_training_args(
     iteration_idx: int,
     dtype: DataType,
     batch_size: int | None = None,
+    learning_rate: float = 2e-5
 ) -> TrainingArguments:
     """Get the training arguments for the current iteration.
 
@@ -269,6 +294,7 @@ def get_training_args(
         batch_size:
             The batch size to use for the current iteration, or None if the batch size
             in the benchmark config should be used.
+        learning_rate: Learning rate to be used in training. Defaults to EuroEval default.
 
     Returns:
         The training arguments for the current iteration.
@@ -299,7 +325,7 @@ def get_training_args(
         per_device_eval_batch_size=batch_size,
         eval_accumulation_steps=32,
         optim=OptimizerNames.ADAMW_TORCH,
-        learning_rate=2e-5,
+        learning_rate=learning_rate,
         warmup_ratio=0.01,
         gradient_accumulation_steps=32 // batch_size,
         load_best_model_at_end=True,

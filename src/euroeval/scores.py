@@ -3,11 +3,11 @@
 import logging
 import typing as t
 import warnings
-
+from collections import defaultdict
 import numpy as np
 
 if t.TYPE_CHECKING:
-    from .data_models import MetricConfig
+    from .data_models import MetricConfig, BenchmarkConfig
     from .types import ScoreDict
 
 logger = logging.getLogger("euroeval")
@@ -16,15 +16,18 @@ logger = logging.getLogger("euroeval")
 def log_scores(
     dataset_name: str,
     metric_configs: list["MetricConfig"],
-    scores: list[dict[str, float]],
+    scores: list[dict[str, float]]|dict[str,list[dict[str, float]]],
     model_id: str,
     model_revision: str,
+    
 ) -> "ScoreDict":
     """Log the scores.
 
     Args:
         dataset_name:
             Name of the dataset.
+        benchmark_config:
+            Benchmark config
         metric_configs:
             List of metrics to log.
         scores:
@@ -44,17 +47,32 @@ def log_scores(
         model_id += f"@{model_revision}"
 
     logger.info(f"Finished evaluation of {model_id} on {dataset_name}.")
+    if isinstance(scores,dict):
+        all_scores = defaultdict(dict)
+        for k,s in scores.items():
+            total_dict: dict[str, float] = dict()
+            for metric_cfg in metric_configs:
+                test_score, test_se = aggregate_scores(scores=s, metric_config=metric_cfg)
+                test_score, test_score_str = metric_cfg.postprocessing_fn(test_score)
+                test_se, test_se_str = metric_cfg.postprocessing_fn(test_se)
+                total_dict[f"test_{metric_cfg.name}"] = test_score
+                total_dict[f"test_{metric_cfg.name}_se"] = test_se
+                logger.info(f"{metric_cfg.pretty_name}: {test_score_str} ± {test_se_str}")
+            all_scores[k]['raw']=s
+            all_scores[k]['total']=total_dict
+        return all_scores
 
-    total_dict: dict[str, float] = dict()
-    for metric_cfg in metric_configs:
-        test_score, test_se = aggregate_scores(scores=scores, metric_config=metric_cfg)
-        test_score, test_score_str = metric_cfg.postprocessing_fn(test_score)
-        test_se, test_se_str = metric_cfg.postprocessing_fn(test_se)
-        total_dict[f"test_{metric_cfg.name}"] = test_score
-        total_dict[f"test_{metric_cfg.name}_se"] = test_se
-        logger.info(f"{metric_cfg.pretty_name}: {test_score_str} ± {test_se_str}")
+    else:
+        total_dict: dict[str, float] = dict()
+        for metric_cfg in metric_configs:
+            test_score, test_se = aggregate_scores(scores=scores, metric_config=metric_cfg)
+            test_score, test_score_str = metric_cfg.postprocessing_fn(test_score)
+            test_se, test_se_str = metric_cfg.postprocessing_fn(test_se)
+            total_dict[f"test_{metric_cfg.name}"] = test_score
+            total_dict[f"test_{metric_cfg.name}_se"] = test_se
+            logger.info(f"{metric_cfg.pretty_name}: {test_score_str} ± {test_se_str}")
 
-    return dict(raw=scores, total=total_dict)
+        return dict(raw=scores, total=total_dict)
 
 
 def aggregate_scores(

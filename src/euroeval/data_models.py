@@ -230,6 +230,8 @@ class BenchmarkConfig:
     trust_remote_code: bool
     clear_model_cache: bool
     evaluate_test_split: bool
+    hp_search: bool
+    learning_rate: float | None
     few_shot: bool
     num_iterations: int
     api_base: str | None
@@ -261,6 +263,8 @@ class BenchmarkConfigParams(pydantic.BaseModel):
     trust_remote_code: bool
     clear_model_cache: bool
     evaluate_test_split: bool
+    hp_search: bool
+    learning_rate: float | None
     few_shot: bool
     num_iterations: int
     api_base: str | None
@@ -268,6 +272,7 @@ class BenchmarkConfigParams(pydantic.BaseModel):
     debug: bool
     run_with_cli: bool
     only_allow_safetensors: bool
+
 
 
 class BenchmarkResult(pydantic.BaseModel):

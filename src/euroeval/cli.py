@@ -81,6 +81,22 @@ from .tasks import get_all_tasks
     show_default=True,
     help="Whether to show a progress bar.",
 )
+
+
+@click.option(
+    "--hp_search/--no_hp_search",
+    default=True,
+    show_default=True,
+    help="Whether to do hp search.",
+)
+
+@click.option(
+    "--learning_rate",
+    default=None,
+    show_default=True,
+    help="Whether to use custom LR.",
+)
+
 @click.option(
     "--raise-errors/--no-raise-errors",
     default=False,
@@ -219,6 +235,8 @@ def benchmark(
     trust_remote_code: bool,
     clear_model_cache: bool,
     evaluate_test_split: bool,
+    hp_search: bool,
+    learning_rate: float | None,
     few_shot: bool,
     num_iterations: int,
     api_base: str | None,
@@ -235,7 +253,6 @@ def benchmark(
     tasks = None if len(task) == 0 else list(task)
     batch_size_int = int(batch_size)
     device = Device[device.upper()] if device is not None else None
-
     benchmarker = Benchmarker(
         language=languages,
         model_language=model_languages,
@@ -254,6 +271,8 @@ def benchmark(
         trust_remote_code=trust_remote_code,
         clear_model_cache=clear_model_cache,
         evaluate_test_split=evaluate_test_split,
+        hp_search=hp_search,
+        learning_rate=learning_rate,
         few_shot=few_shot,
         num_iterations=num_iterations,
         api_base=api_base,
@@ -264,7 +283,7 @@ def benchmark(
     )
 
     # Perform the benchmark evaluation
-    benchmarker.benchmark(model=models)
+    benchmarker.benchmark(model=models,hp_search=hp_search)
 
 
 if __name__ == "__main__":
