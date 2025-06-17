@@ -16,7 +16,7 @@ logger = logging.getLogger("euroeval")
 def log_scores(
     dataset_name: str,
     metric_configs: list["MetricConfig"],
-    scores: list[dict[str, float]]|dict[str,list[dict[str, float]]],
+    scores: list[dict[str, float]]| dict[str,list[dict[str, float]]],
     model_id: str,
     model_revision: str,
     
@@ -60,7 +60,7 @@ def log_scores(
                 logger.info(f"{metric_cfg.pretty_name}: {test_score_str} ± {test_se_str}")
             all_scores[k]['raw']=s
             all_scores[k]['total']=total_dict
-        return all_scores
+        return dict(all_scores)
 
     else:
         total_dict: dict[str, float] = dict()
