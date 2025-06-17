@@ -67,7 +67,8 @@ def finetune(
     else:
         dtype = DataType.FP32
     if benchmark_config.hp_search:
-        learning_rates = [3e-5,2e-5,4e-5,5e-5]
+        #learning_rates = [3e-5,2e-5,4e-5,5e-5]
+        learning_rates = [3e-5,2e-5]
         logger.debug(f"Starting HP search with LRs: {learning_rates}")
         results = defaultdict(list)
     else:
@@ -128,7 +129,7 @@ def finetune(
                     )
                     logger.debug(f"Training done for idx {idx}")
                     if benchmark_config.hp_search:
-                        results[lr].append(itr_scores)
+                        results[str(lr)].append(itr_scores)
                     else:
                         scores.append(itr_scores)
                     logger.debug(f"Test scores for iteration {idx}, learning rate {lr}: {itr_scores}")
@@ -174,7 +175,7 @@ def finetune(
     if not benchmark_config.hp_search:
         return scores
     else:
-        return results
+        return dict(results)
 
 
 def finetune_single_iteration(
