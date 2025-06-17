@@ -1,7 +1,7 @@
 """Types used throughout the project."""
 
+from typing import Dict, List, Union,TypeAlias
 import typing as t
-
 from numpy.typing import NDArray
 from transformers.trainer_utils import EvalPrediction
 
@@ -9,11 +9,24 @@ if t.TYPE_CHECKING:
     from .data_models import GenerativeModelOutput
 
 
-ScoreDict: t.TypeAlias = dict[str, dict[str, float] | list[dict[str, float]]]
-Predictions: t.TypeAlias = NDArray | list[str] | list[list[str]]
-Labels: t.TypeAlias = NDArray | list[str] | list[list[str]]
-
-
+# --- Basic metric types ---
+RawMetric: TypeAlias = Dict[str, float]
+RawList: TypeAlias = List[RawMetric]
+TotalMetric: TypeAlias = Dict[str, float]
+# --- Result Entry Type (for one learning rate/config) ---
+ResultEntry: TypeAlias = Dict[str, Union[RawList, TotalMetric]]  # expects 'raw' and 'total' keys
+# --- Multi-config format: learning_rate -> ResultEntry ---
+MultiResultFormat: TypeAlias = Dict[str, ResultEntry]
+# --- Single-config format with metadata ---
+SingleResultWithMeta: TypeAlias = Dict[str, Union[
+    RawList,
+    TotalMetric,
+    int,
+    bool,
+    str,
+    None
+]]
+ScoreDict: TypeAlias = Union[MultiResultFormat, SingleResultWithMeta]
 class ComputeMetricsFunction(t.Protocol):
     """A function used to compute the metrics."""
 
