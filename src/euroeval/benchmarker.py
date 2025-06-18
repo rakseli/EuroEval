@@ -207,10 +207,13 @@ class Benchmarker:
 
         # Initialise variable storing model lists, so we only have to fetch it once
         self._model_lists: dict[str, list[str]] | None = None
-        if not hp_search:
-            self.results_path = Path.cwd() / "euroeval_benchmark_results.jsonl"
-        else:
+        if hp_search:
             self.results_path = Path.cwd() / "euroeval_benchmark_results_hyperparameter_search.jsonl"
+        elif learning_rate is not None:
+            self.results_path = Path.cwd() / "euroeval_benchmark_results_spesific_lrs.jsonl"
+        else:
+            self.results_path = Path.cwd() / "euroeval_benchmark_results.jsonl"
+
         adjust_logging_level(verbose=self.benchmark_config.verbose)
 
     @property
