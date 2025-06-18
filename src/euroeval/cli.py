@@ -92,6 +92,7 @@ from .tasks import get_all_tasks
 
 @click.option(
     "--learning_rate",
+    type=float,
     default=None,
     show_default=True,
     help="Whether to use custom LR.",
@@ -281,9 +282,8 @@ def benchmark(
         run_with_cli=True,
         only_allow_safetensors=only_allow_safetensors,
     )
-
     # Perform the benchmark evaluation
-    benchmarker.benchmark(model=models,hp_search=hp_search)
+    benchmarker.benchmark(model=models,hp_search=hp_search,learning_rate=learning_rate)
 
 
 if __name__ == "__main__":
