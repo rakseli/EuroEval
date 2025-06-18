@@ -67,15 +67,15 @@ def finetune(
     else:
         dtype = DataType.FP32
     if benchmark_config.hp_search:
-        #learning_rates = [3e-5,2e-5,4e-5,5e-5]
-        learning_rates = [3e-5,2e-5]
+        learning_rates = [1e-5,2e-5,3e-5,4e-5,5e-5]
         logger.debug(f"Starting HP search with LRs: {learning_rates}")
         results = defaultdict(list)
-    else:
-        if benchmark_config.learning_rate is None:
+    elif benchmark_config.learning_rate is None:
             learning_rates = [2e-5]
-        else:
-            learning_rates = [benchmark_config.learning_rate]
+    else:
+        learning_rates = [benchmark_config.learning_rate]
+        results = defaultdict(list)
+
     for n_lr,lr in enumerate(learning_rates):
         logger.debug(f"Starting LR: {lr}")
         bs: int = benchmark_config.batch_size
@@ -128,7 +128,7 @@ def finetune(
                         benchmark_config=benchmark_config,
                     )
                     logger.debug(f"Training done for idx {idx}")
-                    if benchmark_config.hp_search:
+                    if benchmark_config.hp_search or benchmark_config.learning_rate is not None:
                         results[str(lr)].append(itr_scores)
                     else:
                         scores.append(itr_scores)
@@ -172,10 +172,10 @@ def finetune(
 
                     bs //= 2
                     logger.debug(f"Reduced batch size to {bs}")
-    if not benchmark_config.hp_search:
-        return scores
-    else:
+    if  benchmark_config.hp_search or benchmark_config.learning_rate is not None:
         return dict(results)
+    else:
+        return scores
 
 
 def finetune_single_iteration(
