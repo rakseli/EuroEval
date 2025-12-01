@@ -1,3 +1,10 @@
+# EuroEval for Finnish ModernBERT evaluation
+This fork was used for the evaluation of [Finnish ModernBERTs](https://huggingface.co/collections/TurkuNLP/finnish-modernberts). The difference compared to the original version is that in this fork:
+- Learning rates $LR \in \{1e-5,2e-5,3e-5,4e-5,5e-5\}$ are tuned against the validation set (original uses static $2e-5$)
+- Early stopping patience of 5 is used (original uses 2)
+- To run the evals, see `scripts/launch_euroeval_jobs.py`
+-------------------------------------------------------------------------------------
+# Original README
 <div align='center'>
 <img src="https://raw.githubusercontent.com/EuroEval/EuroEval/main/gfx/euroeval.png" height="500" width="372">
 </div>
