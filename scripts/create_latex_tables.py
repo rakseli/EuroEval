@@ -33,9 +33,9 @@ def format_result(res):
         if val is None or (isinstance(val, float) and math.isnan(val)):
             parts.append("-")
         elif se is not None:
-            parts.append(f"{val:.2f}±{se:.2f}")
+            parts.append(f"{val:.1f}±{se:.1f}")
         else:
-            parts.append(f"{val:.2f}")
+            parts.append(f"{val:.1f}")
         metrics_keys.append(score_map[k])
     
     return " / ".join(parts) if parts else "-", metrics, metrics_keys
@@ -162,7 +162,7 @@ def create_latex_tables(input_file, output_file, monolingual_models):
             for m in models:
                 row_entries = [r for r in subset if r["model"] == m]
                 num_params = row_entries[0].get("num_params")
-                num_params_m = f"{(num_params / 1e6):.2f}" if isinstance(num_params, (int, float)) else "-"
+                num_params_m = f"{(num_params / 1e6):.1f}" if isinstance(num_params, (int, float)) else "-"
                 model_label = latex_escape(m)
                 cols = [model_label, num_params_m]
                 for ds in datasets:
