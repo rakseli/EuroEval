@@ -92,7 +92,7 @@ def finetune(
             if not benchmark_config.hp_search:
                 model_already_initialized = idx == 0
             else:
-                model_already_initialized = n_lr == 0
+                model_already_initialized = n_lr == 0 and idx == 0
             
             # Run a loop here to deal with automatic reduction of batch size
             while True:
