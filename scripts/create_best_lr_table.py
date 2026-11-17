@@ -38,10 +38,10 @@ def create_best_lr_table(input_file, output_file):
               "\\textbf{Best LR} & \\textbf{Val. F1} \\\\")
     tex_lines = [
         "\\begin{longtable}{l l l c c}",
-        "\\caption{Best learning rate for each model and EuroEval dataset, selected by the mean of the "
-        "F1 scores on the validation split in the hyperparameter search. "
-        "\"Val. F1\" is that mean F1 score for the selected learning rate.}",
-        "\\label{tab:euroeval-best-lrs} \\\\",
+        "\\small \\\\",
+        "\\caption{Best learning rate for each model and EuroEval dataset, selected by the mean of the ",
+        "F1 scores on the validation split in the hyperparameter search.}",
+        "\\label{tab:euroeval-best-lrs}\\\\",
         "\\toprule",
         header,
         "\\midrule",
@@ -67,7 +67,7 @@ def create_best_lr_table(input_file, output_file):
         lang_col = latex_escape(lang_map[lang]) if lang != prev_lang else ""
         ds_col = latex_escape(ds) if (lang, ds) != (prev_lang, prev_ds) else ""
         model_col = latex_escape(format_model_name(r["model"].split("/")[-1]))
-        cols = [lang_col, ds_col, model_col, format_lr(r["best_lr"]), f"{r['mean_f1']:.1f}"]
+        cols = [lang_col, ds_col, model_col, r["best_lr"], f"{r['mean_f1']:.1f}"]
         tex_lines.append(" & ".join(cols) + " \\\\")
         prev_lang, prev_ds = lang, ds
 
