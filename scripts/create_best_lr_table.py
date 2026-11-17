@@ -35,7 +35,7 @@ def create_best_lr_table(input_file, output_file):
 
     n_cols = 5
     header = ("\\textbf{Language} & \\textbf{Dataset} & \\textbf{Model} & "
-              "\\textbf{Best LR} & \\textbf{Val. F1} \\\\")
+              "\\textbf{Best LR} & \\textbf{Mean F1} \\\\")
     tex_lines = [
         "\\begin{longtable}{l l l c c}",
         "\\small \\\\",
